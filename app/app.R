@@ -138,16 +138,35 @@ local({
     "build_intermediates.R", "output_writers.R",
     "reconciliation.R",
     "validation.R", "validation_suppressions.R",
-    "validators_input.R", "validators_transform.R", "validators_derived.R",
+    "validators_input.R", "validators_static.R",
+    "validators_transform.R", "validators_derived.R",
     "run_discovery.R",
     "run_approval.R",
     "manifest.R",
     "run_etl.R",
     "run_etl_phased.R"
   )
+  # Fail LOUDLY if any R/ file is missing. Previously this loop silently
+  # skipped missing files, which on Posit Connect would let the app boot
+  # without (e.g.) validators_input.R being sourced — and only later
+  # surface as a confusing "could not find function build_input_validators"
+  # when the user clicked Pre-run check. Better to refuse to start.
+  missing_r_files <- character()
   for (f in files_in_order) {
     p <- file.path(r_dir, f)
-    if (file.exists(p)) source(p, local = FALSE)
+    if (!file.exists(p)) {
+      missing_r_files <- c(missing_r_files, f)
+      next
+    }
+    source(p, local = FALSE)
+  }
+  if (length(missing_r_files) > 0) {
+    stop("The following pipeline files are missing from the deployment:\n  ",
+         paste(missing_r_files, collapse = "\n  "),
+         "\n\nThe app cannot run without them.\n",
+         "If you are deploying to Posit Connect, verify R/ is included in ",
+         "your manifest.json — see manifest.json's `files` block.\n",
+         "Looked under: ", r_dir)
   }
 })
 
