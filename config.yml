@@ -1,0 +1,115 @@
+# IFRS9 ETL — runtime configuration
+#
+# Edit the `paths:` block below to point at your real folders. The values
+# below are the defaults for running against the bundled sample inputs.
+#
+# In the original Excel tool these were hardcoded to:
+#   input  : \\mvlicb01\IFRSIN\
+#   output : \\mvlicb01\IFRSOUT\
+# Both are now parameterised here.
+
+paths:
+  # Where to read raw input files from (matches the Excel tool's IFRSIN folder)
+  input_dir: "input"
+
+  # Where to write the 18 output CSV files (matches the Excel tool's IFRSOUT folder)
+  output_dir: "output"
+
+  # Where the keep_history=TRUE mode writes timestamped runs. The Shiny app
+  # reads from this directory to populate the Runs page. Independent of
+  # output_dir — output_dir is for single-folder batch runs; runs_dir is
+  # the permanent archive of all runs for browsing in the app.
+  runs_dir: "runs"
+
+  # Static reference data extracted once from the Excel tool — committed to git
+  static_dir: "data-raw/static"
+
+  # Optional: a "data drop" folder where the data team writes the monthly
+  # input bundle. Each immediate subfolder is treated as one drop (typically
+  # named by month, e.g. 2026-01/). The Run pipeline page lets the user pick
+  # one of these subfolders as the input source for a run, in addition to
+  # the configured input_dir or an uploaded zip.
+  #
+  # If unset or pointing to a missing path, the "Data drop folder" option in
+  # the UI is hidden — input_dir + zip upload remain available.
+  data_drop_root: ""
+
+  # Variable dictionary — registry of every macroeconomic variable used by
+  # any model. Models reference variables by id (VAR_*).
+  variable_dictionary: "config/variable_dictionary.yml"
+
+  # Model registry — coefficients, weights, and component variables for every
+  # satellite PD model the team can switch between.
+  models: "config/models.yml"
+
+  # Legacy single-model config (kept for backwards compatibility — emits a
+  # deprecation warning if used directly. Loader auto-routes to models.yml
+  # when paths$models is set above).
+  model_config: "config/model_config.yml"
+
+  # Per-run model inputs (scenario weights, MEV forecasts) — typically
+  # updated by the user before each run when the workbook is refreshed.
+  model_inputs: "config/model_inputs.yml"
+
+  # Optional: directory of reference output CSVs to reconcile against in
+  # Phase H5. Leave commented out for production runs (where there is no
+  # bundled reference). Useful during development to compare against a
+  # previous run or against the V4 bundle for spot-checks.
+  # reference_outputs: "../output_files/Output"
+
+run:
+  # Active models. Each name must match an entry under `models:` in models.yml.
+  internal_model: "internal_v4_production"
+  external_model: "external_gcc_v7"
+
+  # Behaviour when a validation check fails. One of:
+  #   "stop"   - halt the run on any ERROR-level failure (default)
+  #   "warn"   - emit warnings, never halt; useful during development
+  #   "ignore" - record results but proceed silently
+  # WARN/INFO findings never halt regardless of this setting; they are
+  # always recorded in reports/validation.md and reports/validation.csv.
+  on_validation_error: "warn"
+
+  # Extract / reporting date for this run (the EXTRACTDA column in all outputs).
+  # Format: YYYY-MM-DD. Leave empty to auto-detect from the input AccountMaster file.
+  extract_date: "2025-12-31"
+
+  # Whether to overwrite existing output files in output_dir
+  overwrite: true
+
+  # Verbose logging
+  verbose: true
+
+  # Maximum file-upload size for the Shiny app's "Upload zip" input source,
+  # in megabytes. Default 500. Bank input bundles regularly exceed the
+  # built-in Shiny default of 5 MB. Lower this if you're deploying on a
+  # constrained host; raise it if your bundle is unusually large.
+  max_upload_size_mb: 500
+
+logging:
+  # Log file location (NULL = console only)
+  log_file: "output/etl_run.log"
+  level: "INFO"   # one of: DEBUG, INFO, WARN, ERROR
+
+# ----------------------------------------------------------------------------
+# Approval workflow
+#
+# Two-stage maker -> checker:
+#   1. The user who runs the pipeline is the implicit "maker" (no separate
+#      Submit step — finishing a run is the act of submitting).
+#   2. A "checker" reviews and either approves (run becomes exportable)
+#      or rejects (terminal — fix the underlying issue and re-run).
+#
+# Separation of duties:
+#   - enforce_separation_of_duties: TRUE  -> the maker cannot also approve
+#     their own run. Use in production.
+#   - enforce_separation_of_duties: FALSE -> the maker may approve their
+#     own run. Use in dev/test where one person tests the full flow.
+#
+# A banner appears in the Approval queue UI when separation is disabled,
+# making the relaxed control visible. The flag's value at run time is also
+# captured in the run's manifest, so a reviewer 6 months later can see
+# what governance was in force when the run was approved.
+# ----------------------------------------------------------------------------
+approval:
+  enforce_separation_of_duties: false

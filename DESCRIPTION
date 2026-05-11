@@ -1,0 +1,25 @@
+Package: ifrs9etl
+Type: Project
+Title: IFRS9 ETL Tool — R port of the Excel/VBA tool
+Version: 0.1.0
+Description:
+    Reads bank portfolio data from the IFRSIN folder, applies IFRS9 staging
+    rules and a 3-variable satellite macro model, and writes 18 standardised
+    CSV files to the IFRSOUT folder for downstream LIC tool ingestion.
+    Direct port of `Updated_ETL_File__Test__V7_-_2025-NS.xlsm`.
+Encoding: UTF-8
+Imports:
+    readxl,
+    rvest,
+    xml2,
+    dplyr,
+    tidyr,
+    readr,
+    yaml,
+    lubridate,
+    glue,
+    purrr
+Suggests:
+    testthat,
+    waldo
+RoxygenNote: 7.3.0
