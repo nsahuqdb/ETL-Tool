@@ -171,6 +171,54 @@ local({
 })
 
 
+# ---- Static hints for Posit Connect file detection ---------------------
+# rsconnect::writeManifest() walks the project for literal source("R/foo.R")
+# calls and bundles whichever files it finds. Our REAL sourcing happens in
+# the for loop above via file.path(r_dir, f), which is dynamic and invisible
+# to the static analyzer — so without this block, several R/ files get
+# silently dropped from the deployment bundle and the app crashes at boot
+# with "could not find function ...".
+#
+# This block never executes (if (FALSE) ensures that). Its only purpose is
+# to give the static analyzer literal strings to detect. Keep in sync with
+# files_in_order above.
+if (FALSE) {
+  source("R/io_helpers.R")
+  source("R/audit_log.R")
+  source("R/code_version.R")
+  source("R/snapshots.R")
+  source("R/load_config.R")
+  source("R/load_variables.R")
+  source("R/load_static.R")
+  source("R/input_schemas.R")
+  source("R/read_inputs.R")
+  source("R/input_acquisition.R")
+  source("R/run_export.R")
+  source("R/transform_lending.R")
+  source("R/lending_portfolio_view.R")
+  source("R/transform_investments.R")
+  source("R/investment_portfolio_view.R")
+  source("R/macro_model.R")
+  source("R/pd_term_structure.R")
+  source("R/lifetime_parameter_other.R")
+  source("R/build_stpd.R")
+  source("R/build_intermediates.R")
+  source("R/output_writers.R")
+  source("R/reconciliation.R")
+  source("R/validation.R")
+  source("R/validation_suppressions.R")
+  source("R/validators_input.R")
+  source("R/validators_static.R")
+  source("R/validators_transform.R")
+  source("R/validators_derived.R")
+  source("R/run_discovery.R")
+  source("R/run_approval.R")
+  source("R/manifest.R")
+  source("R/run_etl.R")
+  source("R/run_etl_phased.R")
+}
+
+
 # ---- Source page modules -------------------------------------------------
 local({
   mods <- list.files(file.path(.project_root, "app", "modules"),
