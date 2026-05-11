@@ -1,0 +1,151 @@
+# =============================================================================
+# variable_dictionary.yml
+#
+# AUTHORITATIVE registry of every macroeconomic variable used by the IFRS9
+# ETL pipeline. Models reference variables by their `id` (e.g.
+# VAR_NON_OIL_GDP_GROWTH) — never by display name or filename. This file
+# is the single source of truth that binds:
+#
+#   - human-readable display name (for UI / logs / docs)
+#   - units and scale (so the stress_unit_multiplier is always correct)
+#   - source (paper trail to the original data)
+#   - location of any historical series file (history_file)
+#   - location of any per-run forecast (forecast_source)
+#
+# Renaming a variable, or swapping it for a new one, is a YAML edit:
+#   1. Add a new VAR_FOO entry with its own history_file path.
+#   2. Update models.yml to reference VAR_FOO instead of the old code.
+#   3. Mark the old VAR with deprecated: true (keeps for audit reproducibility).
+#
+# The ID convention is UPPERCASE_SNAKE_CASE prefixed with VAR_, suffixed
+# with the transformation if relevant (_GROWTH, _LEVEL, _RATIO, _SHARE).
+# Use the underlying concept, not the current source name (e.g.
+# VAR_QATAR_REAL_ESTATE_INDEX_GROWTH not VAR_REPI).
+# =============================================================================
+
+schema_version: "1.0"
+
+variables:
+
+  # ---- Lending-portfolio MEV: Non-Oil Real GDP (Qatar) ---------------------
+  VAR_NON_OIL_GDP_GROWTH:
+    display_name: "Non-Oil Real GDP Growth (%)"
+    description: >
+      Year-on-year growth rate of Qatar's Non-Oil Real GDP, as published
+      by the Qatar Planning & Statistics Authority. The headline macro
+      driver for the lending-portfolio satellite PD model in V4
+      production (weight = 1.0; REPI and DC carry weight = 0).
+    units: percentage_points          # raw percentage values, e.g. 4.44 = 4.44%
+    scale: native                     # value is already in display units
+    stress_unit_multiplier: 1         # see model_config.yml comments
+    source: "Qatar Planning & Statistics Authority"
+    history_file: data-raw/static/non_oil_gdp_history.csv
+    history_value_column: value
+    history_year_column: year
+    forecast_source:                  # forecast pulled from per-run YAML
+      kind: model_inputs_yaml
+      path: mev_forecasts.forecasts
+      column_index: 1                 # 1 = first MEV column in YAML matrix
+    deprecated: false
+
+  # ---- Lending-portfolio MEV: Qatari Real Estate Price Index ---------------
+  VAR_QATAR_REAL_ESTATE_INDEX_GROWTH:
+    display_name: "Qatari Real Estate Index Growth"
+    description: >
+      Year-on-year growth of Qatar's Real Estate Price Index (REPI).
+      Inactive in V4 production (weight = 0). PDF methodology assigns
+      this variable a non-zero weight in the 3-variable extended model.
+    units: fractional                 # value 0.05 means 5%
+    scale: percent_to_fraction
+    stress_unit_multiplier: 100       # cancels percent encoding in SF formula
+    source: "Qatar Central Bank — REPI series"
+    history_file: null                # no historical file tracked yet
+    forecast_source:
+      kind: model_inputs_yaml
+      path: mev_forecasts.forecasts
+      column_index: 2
+    deprecated: false
+
+  # ---- Lending-portfolio MEV: Qatari Domestic Credit ----------------------
+  VAR_QATAR_DOMESTIC_CREDIT_GROWTH:
+    display_name: "Qatari Domestic Credit Growth"
+    description: >
+      Year-on-year growth of Qatar's Domestic Credit aggregate. Inactive
+      in V4 production (weight = 0); enabled in 3-variable extended model.
+    units: fractional
+    scale: percent_to_fraction
+    stress_unit_multiplier: 100
+    source: "Qatar Central Bank — DC series"
+    history_file: null
+    forecast_source:
+      kind: model_inputs_yaml
+      path: mev_forecasts.forecasts
+      column_index: 3
+    deprecated: false
+
+  # ---- External-portfolio MEV: country-weighted GCC Real GDP --------------
+  VAR_GCC_REAL_GDP_GROWTH:
+    display_name: "Country-weighted GCC Real GDP Growth (%)"
+    description: >
+      Synthetic variable: weighted average of per-country GCC real GDP
+      growth, where weights are each country's share of GCC nominal GDP
+      in the same year. The dependent variable for the external-portfolio
+      satellite model. Computed at runtime from VAR_GCC_REAL_GDP_GROWTH_BY_COUNTRY
+      and VAR_GCC_NOMINAL_GDP_BY_COUNTRY (which serves as the weight).
+    units: percentage_points
+    scale: native
+    stress_unit_multiplier: 1
+    source: "Derived: SUMPRODUCT(country_growth, country_share)"
+    history_file: data-raw/static/gcc_real_gdp_growth.csv
+    history_value_column: value
+    history_year_column: year
+    history_group_column: country     # series is panel; aggregate before use
+    history_aggregation:
+      method: weighted_mean
+      weight_variable: VAR_GCC_NOMINAL_GDP_BY_COUNTRY
+    forecast_source:
+      kind: model_inputs_yaml
+      path: external_gcc_country_growth   # 6 countries × n_forecasts matrix
+      aggregation: weighted_mean_by_year
+      weight_path: external_gcc_country_prices
+    deprecated: false
+
+  # ---- Component series for VAR_GCC_REAL_GDP_GROWTH (panel data) ---------
+  # These two are not used directly by any model — they're upstream inputs
+  # to VAR_GCC_REAL_GDP_GROWTH. Documented here so the dictionary is the
+  # complete record of every macro file we read.
+  VAR_GCC_REAL_GDP_GROWTH_BY_COUNTRY:
+    display_name: "GCC Real GDP Growth by Country (%)"
+    description: >
+      Per-country, per-year history of real GDP growth. Six GCC countries.
+      Used as input to VAR_GCC_REAL_GDP_GROWTH (the country-weighted aggregate).
+    units: percentage_points
+    scale: native
+    stress_unit_multiplier: 1
+    source: "IMF World Economic Outlook"
+    history_file: data-raw/static/gcc_real_gdp_growth.csv
+    history_value_column: value
+    history_year_column: year
+    history_group_column: country
+    forecast_source:
+      kind: model_inputs_yaml
+      path: external_gcc_country_growth
+    deprecated: false
+
+  VAR_GCC_NOMINAL_GDP_BY_COUNTRY:
+    display_name: "GCC Nominal GDP by Country (USD bn)"
+    description: >
+      Per-country, per-year nominal GDP (current prices, USD billions).
+      Used as the weight in VAR_GCC_REAL_GDP_GROWTH.
+    units: usd_billions
+    scale: native
+    stress_unit_multiplier: 1
+    source: "IMF World Economic Outlook"
+    history_file: data-raw/static/gcc_gdp_current_prices.csv
+    history_value_column: value
+    history_year_column: year
+    history_group_column: country
+    forecast_source:
+      kind: model_inputs_yaml
+      path: external_gcc_country_prices
+    deprecated: false

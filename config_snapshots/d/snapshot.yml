@@ -1,0 +1,31 @@
+schema_version: '1.0'
+label: d
+status: approved
+description: h
+created_by: nsahu
+created_at: 2026-05-11T14:15:25+0300
+parent: ~
+code_sha_at_creation: .na.character
+approved_by: nsahu
+approved_at: 2026-05-11T14:15:36+0300
+approval_reason: k
+path: C:\Users\nsahu\Downloads\ifrs9_etl_LOCKED_H19e\ifrs9_etl\config_snapshots\d
+transitions:
+- at: 2026-05-11T14:15:30+0300
+  by: nsahu
+  from: draft
+  to: tested
+  reason: g
+- at: 2026-05-11T14:15:34+0300
+  by: nsahu
+  from: tested
+  to: pending_final
+  reason: m
+- at: 2026-05-11T14:15:36+0300
+  by: nsahu
+  from: pending_final
+  to: approved
+  reason: k
+tested_by: nsahu
+tested_at: 2026-05-11T14:15:30+0300
+

@@ -1,0 +1,2 @@
+customer_id,override_rating,reason,created_by,created_at,approved_by,approved_at,status,prior_value,source_run_id
+31884,QDB 1,Manual override per Inputs_Lending Portfolio sheet (V4 row 149: QDB 5+ -> QDB 1),v4_import,2026-05-06T00:00:00Z,v4_import,2026-05-06T00:00:00Z,approved,QDB 5+,
