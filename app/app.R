@@ -28,10 +28,19 @@
 # =============================================================================
 
 # ---- Required packages --------------------------------------------------
+# NOTE: every package the app (or any sourced R/ file) needs MUST be
+# library()'d explicitly here so Posit Connect's rsconnect::writeManifest
+# detects them. The static analyzer in rsconnect only follows library()
+# and pkg::fun() references in files it scans. Our R/ pipeline code is
+# loaded via dynamic source() in source_pipeline() — those files are not
+# walked. So any `readr::*`, `readxl::*`, `rvest::*` references inside
+# R/ would be invisible to rsconnect without explicit library() calls
+# here. Keep this list in sync with R/*.R imports.
 required_pkgs <- c("shiny", "bslib", "DT", "jsonlite", "yaml", "tibble",
-                    "markdown", "readr")
+                   "markdown", "readr", "readxl", "rvest", "xml2",
+                   "lubridate")
 missing_pkgs <- required_pkgs[!vapply(required_pkgs, requireNamespace,
-                                        logical(1), quietly = TRUE)]
+                                      logical(1), quietly = TRUE)]
 if (length(missing_pkgs) > 0) {
   stop("Missing packages required by the Shiny app: ",
        paste(missing_pkgs, collapse = ", "),
@@ -42,6 +51,16 @@ if (length(missing_pkgs) > 0) {
 
 library(shiny)
 library(bslib)
+library(DT)
+library(jsonlite)
+library(yaml)
+library(tibble)
+library(markdown)
+library(readr)
+library(readxl)
+library(rvest)
+library(xml2)
+library(lubridate)
 
 
 # ---- Resolve project root + source pipeline -----------------------------
@@ -136,7 +155,7 @@ local({
 # ---- Source page modules -------------------------------------------------
 local({
   mods <- list.files(file.path(.project_root, "app", "modules"),
-                      pattern = "\\.R$", full.names = TRUE)
+                     pattern = "\\.R$", full.names = TRUE)
   for (m in mods) source(m, local = FALSE)
 })
 
@@ -145,18 +164,18 @@ local({
 ui <- page_navbar(
   title = tagList(
     tags$img(src = "qdb_logo.jpg", height = "32px",
-              class = "qdb-navbar-logo",
-              style = "margin-right: 12px; margin-top: -4px;"),
+             class = "qdb-navbar-logo",
+             style = "margin-right: 12px; margin-top: -4px;"),
     tags$span("IFRS9 ETL Runs",
               style = "font-weight: 600; vertical-align: middle;")
   ),
   theme = bs_theme(version = 5, bootswatch = "flatly",
-                    primary = "#5b1f6e"),
+                   primary = "#5b1f6e"),
   fillable = FALSE,
   header = tags$head(
     # Browser tab favicon
     tags$link(rel = "icon", type = "image/jpeg",
-               href = "qdb_logo.jpg"),
+              href = "qdb_logo.jpg"),
     tags$style(HTML("
       /* The logo is dark purple on a JPG with white background. The
          flatly navbar is dark, so the logo's white background creates
@@ -231,13 +250,13 @@ server <- function(input, output, session) {
   # reflects the snapshot state at app start, missing any approvals
   # done during the session.
   session$userData$snapshots_changed <- reactiveVal(0)
-
+  
   # Same pattern for runs: when the Run pipeline finishes phase 2,
   # the Runs page and Approval queue need to know so they re-read
   # the runs/ directory and pick up the new run. When approve/reject
   # happens, the Runs page (status pill column) needs to re-read.
   session$userData$runs_changed <- reactiveVal(0)
-
+  
   mod_runs_server("runs",
                   on_select_run = function(run_path) {})
   mod_run_trigger_server("run_trigger")
