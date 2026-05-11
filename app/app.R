@@ -38,7 +38,7 @@
 # here. Keep this list in sync with R/*.R imports.
 required_pkgs <- c("shiny", "bslib", "DT", "jsonlite", "yaml", "tibble",
                    "markdown", "readr", "readxl", "rvest", "xml2",
-                   "lubridate")
+                   "lubridate", "tidyr", "dplyr", "commonmark", "digest")
 missing_pkgs <- required_pkgs[!vapply(required_pkgs, requireNamespace,
                                       logical(1), quietly = TRUE)]
 if (length(missing_pkgs) > 0) {
@@ -61,6 +61,10 @@ library(readxl)
 library(rvest)
 library(xml2)
 library(lubridate)
+library(tidyr)
+library(dplyr)
+library(commonmark)
+library(digest)
 
 
 # ---- Resolve project root + source pipeline -----------------------------
